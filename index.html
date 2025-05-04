@@ -5,9 +5,19 @@
   <title>Personal Dictionary - EIJIRO</title>
   <link rel="manifest" href="manifest.json">
   <style>
-    body { font-family: sans-serif; margin: 2em; }
-    #searchBox { width: 100%; padding: 0.5em; font-size: 1em; }
-    #result { margin-top: 1em; white-space: pre-wrap; }
+    body {
+      font-family: sans-serif;
+      margin: 2em;
+    }
+    #searchBox {
+      width: 100%;
+      padding: 0.5em;
+      font-size: 1em;
+    }
+    #result {
+      margin-top: 1em;
+      white-space: pre-wrap;
+    }
   </style>
 </head>
 <body>
@@ -16,31 +26,41 @@
   <div id="result"></div>
 
   <script>
-    const dictionary = [];
-    const files = ['dictionary_part1.txt', 'dictionary_part2.txt', 'dictionary_part3.txt', 'dictionary_part4.txt'];
+    let dictionary = [];
+    const partFiles = [
+      'dictionary_part1.txt',
+      'dictionary_part2.txt',
+      'dictionary_part3.txt',
+      'dictionary_part4.txt'
+    ];
 
-    Promise.all(
-      files.map(file => fetch(file).then(res => res.text()))
-    ).then(fileContents => {
-      fileContents.forEach(text => {
-        const lines = text.split(/\r?\n/);
-        let currentWord = '', currentDef = '';
+    Promise.all(partFiles.map(file =>
+      fetch(file)
+        .then(response => response.text())
+        .then(text => {
+          const lines = text.split(/\r?\n/);
+          let currentWord = '';
+          let currentDef = '';
+          const entries = [];
 
-        for (let line of lines) {
-          if (/^[!-~]{1,100}$/.test(line.trim())) {
-            if (currentWord && currentDef) {
-              dictionary.push({ word: currentWord, trans: currentDef.trim() });
+          for (let line of lines) {
+            if (/^[!-~]{1,100}$/.test(line.trim())) {
+              if (currentWord && currentDef) {
+                entries.push({ word: currentWord, trans: currentDef.trim() });
+              }
+              currentWord = line.trim();
+              currentDef = '';
+            } else {
+              currentDef += line.trim() + '\n';
             }
-            currentWord = line.trim();
-            currentDef = '';
-          } else {
-            currentDef += line.trim() + '\n';
           }
-        }
-        if (currentWord && currentDef) {
-          dictionary.push({ word: currentWord, trans: currentDef.trim() });
-        }
-      });
+          if (currentWord && currentDef) {
+            entries.push({ word: currentWord, trans: currentDef.trim() });
+          }
+          return entries;
+        })
+    )).then(results => {
+      dictionary = results.flat(); // 統合
     });
 
     document.getElementById('searchBox').addEventListener('input', () => {
@@ -48,7 +68,7 @@
       const resultDiv = document.getElementById('result');
       resultDiv.innerHTML = '';
 
-      if (!query) return;
+      if (query === '') return;
 
       const result = dictionary.filter(entry => entry.word.toLowerCase().includes(query));
       if (result.length === 0) {
